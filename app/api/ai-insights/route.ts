@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Habit, AIInsightsResponse } from "@/types";
-import { calculateHabitStats, calculateTotals, formatCurrencyFull, minutesToHours } from "@/lib/calculations";
+import { calculateHabitStats, calculateTotals, minutesToHours } from "@/lib/calculations";
 
-const client = new Anthropic();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const prompt = `You are a sharp financial advisor analyzing someone's daily habits. Be direct, insightful, and a little provocative. 
+    const prompt = `You are a sharp financial advisor analyzing someone's daily habits. Be direct, insightful, and a little provocative.
 
 Here are their habits with yearly costs (in ₹):
 ${JSON.stringify(habitDetails, null, 2)}
@@ -34,48 +34,39 @@ ${JSON.stringify(habitDetails, null, 2)}
 Total yearly cost: ₹${Math.round(totals.yearlyCost).toLocaleString("en-IN")}
 Total yearly hours: ${Math.round(minutesToHours(totals.yearlyTime))}h
 
-Respond ONLY with a JSON object (no markdown, no code fences) matching this exact TypeScript type:
+Respond ONLY with a JSON object (no markdown, no code fences) matching this exact structure:
 {
   "summary": "2-3 sentence punchy summary of their spending habits",
   "topHabitsToQuit": [
     {
       "habitId": "matching habit name",
       "habitName": "string",
-      "severity": "critical" | "high" | "medium" | "low",
-      "title": "catchy title like 'Your ₹60K Coffee Addiction'",
-      "reasoning": "2 sentences on why to quit/reduce this habit",
-      "yearlySavings": number,
+      "severity": "critical or high or medium or low",
+      "title": "catchy title like Your 60K Coffee Addiction",
+      "reasoning": "2 sentences on why to quit or reduce this habit",
+      "yearlySavings": 0,
       "alternativeSuggestion": "brief practical alternative"
     }
   ],
-  "overallScore": number between 0-100 (higher = more wasteful/unhealthy habits),
-  "positiveHabits": ["list of habit names that are actually fine or healthy"],
+  "overallScore": 0,
+  "positiveHabits": ["list of habit names that are fine or healthy"],
   "motivation": "one punchy closing statement to motivate change"
 }
 
-Return the top 3-4 habits to cut. Be specific about rupee amounts. Be real, not preachy.`;
+Return top 3-4 habits to cut. Be specific about rupee amounts. Be real, not preachy. Return pure JSON only, no backticks.`;
 
-    const message = await client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 1200,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      throw new Error("Unexpected response type");
-    }
-
-    // Parse JSON response
-    const text = content.text.trim();
-    const jsonStr = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
-    const insights: AIInsightsResponse = JSON.parse(jsonStr);
+    const clean = text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+    const insights: AIInsightsResponse = JSON.parse(clean);
 
     return NextResponse.json(insights);
   } catch (error) {
     console.error("AI insights error:", error);
     return NextResponse.json(
-      { error: "Failed to generate insights. Check your Anthropic API key." },
+      { error: "Failed to generate insights. Check your Gemini API key." },
       { status: 500 }
     );
   }
