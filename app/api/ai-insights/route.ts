@@ -55,7 +55,7 @@ Respond ONLY with a JSON object (no markdown, no code fences) matching this exac
 
 Return top 3-4 habits to cut. Be specific about rupee amounts. Be real, not preachy. Return pure JSON only, no backticks.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
 
