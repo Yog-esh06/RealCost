@@ -17,10 +17,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const severityConfig = {
-  critical: { label: "Critical", variant: "critical" as const, icon: "🔴" },
-  high: { label: "High", variant: "high" as const, icon: "🟠" },
-  medium: { label: "Medium", variant: "medium" as const, icon: "🟡" },
-  low: { label: "Low", variant: "low" as const, icon: "🔵" },
+  critical: { label: "Critical", variant: "destructive" as const, icon: "🔴" },
+  high: { label: "High", variant: "destructive" as const, icon: "🟠" },
+  medium: { label: "Medium", variant: "secondary" as const, icon: "🟡" },
+  low: { label: "Low", variant: "outline" as const, icon: "🔵" },
 };
 
 function ScoreRing({ score }: { score: number }) {
@@ -58,14 +58,17 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 function InsightCard({ insight }: { insight: AIInsight }) {
-  const cfg = severityConfig[insight.severity];
+  // Safe lookup: Lowercase the severity and provide a fallback to 'medium' if not found
+  const severityKey = (insight.severity?.toLowerCase() || "medium") as keyof typeof severityConfig;
+  const cfg = severityConfig[severityKey] || severityConfig.medium;
+
   return (
     <div className="rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:border-border/80">
       <div className="mb-2 flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold text-foreground leading-snug">
           {cfg.icon} {insight.title}
         </h4>
-        <Badge variant={cfg.variant} className="shrink-0 text-[10px]">
+        <Badge variant={cfg.variant as any} className="shrink-0 text-[10px]">
           {cfg.label}
         </Badge>
       </div>
@@ -115,7 +118,6 @@ export function AIInsightsPanel() {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
@@ -126,7 +128,7 @@ export function AIInsightsPanel() {
               AI Habit Advisor
             </h2>
             <p className="text-xs text-muted-foreground">
-              Claude analyzes your spending patterns
+              Gemini analyzes your spending patterns
             </p>
           </div>
         </div>
@@ -148,7 +150,6 @@ export function AIInsightsPanel() {
         </Button>
       </div>
 
-      {/* Error */}
       {aiError && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/5 p-3 text-sm text-rose-400">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -156,16 +157,14 @@ export function AIInsightsPanel() {
         </div>
       )}
 
-      {/* Loading skeleton */}
       {isLoadingAI && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 rounded-lg shimmer" />
+            <div key={i} className="h-28 rounded-lg bg-secondary/20 animate-pulse" />
           ))}
         </div>
       )}
 
-      {/* Empty state */}
       {!aiInsights && !isLoadingAI && !aiError && (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <span className="mb-3 text-4xl">🤖</span>
@@ -176,10 +175,8 @@ export function AIInsightsPanel() {
         </div>
       )}
 
-      {/* Insights */}
       {aiInsights && !isLoadingAI && (
         <div className="space-y-4">
-          {/* Summary + score */}
           <div className="flex gap-4 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
             <ScoreRing score={aiInsights.overallScore} />
             <div className="flex-1">
@@ -202,19 +199,17 @@ export function AIInsightsPanel() {
             </div>
           </div>
 
-          {/* Top habits to cut */}
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Habits to Reconsider
             </h3>
             <div className="space-y-2">
-              {aiInsights.topHabitsToQuit.map((insight) => (
-                <InsightCard key={insight.habitId} insight={insight} />
+              {aiInsights.topHabitsToQuit.map((insight, idx) => (
+                <InsightCard key={insight.habitId || idx} insight={insight} />
               ))}
             </div>
           </div>
 
-          {/* Motivation */}
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-300 italic">
             ✨ {aiInsights.motivation}
           </div>

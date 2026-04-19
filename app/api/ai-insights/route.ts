@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Habit, AIInsightsResponse } from "@/types";
-import { calculateHabitStats, calculateTotals, minutesToHours } from "@/lib/calculations";
+import {
+  calculateHabitStats,
+  calculateTotals,
+  minutesToHours,
+} from "@/lib/calculations";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -10,7 +14,10 @@ export async function POST(req: NextRequest) {
     const { habits }: { habits: Habit[] } = await req.json();
 
     if (!habits || habits.length === 0) {
-      return NextResponse.json({ error: "No habits provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No habits provided" },
+        { status: 400 }
+      );
     }
 
     const totals = calculateTotals(habits);
@@ -26,47 +33,60 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const prompt = `You are a sharp financial advisor analyzing someone's daily habits. Be direct, insightful, and a little provocative.
-
-Here are their habits with yearly costs (in ₹):
+    const prompt = `You are a sharp financial advisor. Analyze these habits:
 ${JSON.stringify(habitDetails, null, 2)}
 
 Total yearly cost: ₹${Math.round(totals.yearlyCost).toLocaleString("en-IN")}
 Total yearly hours: ${Math.round(minutesToHours(totals.yearlyTime))}h
 
-Respond ONLY with a JSON object (no markdown, no code fences) matching this exact structure:
+Respond ONLY with a JSON object matching this structure:
 {
-  "summary": "2-3 sentence punchy summary of their spending habits",
+  "summary": "string",
   "topHabitsToQuit": [
     {
-      "habitId": "matching habit name",
+      "habitId": "string",
       "habitName": "string",
-      "severity": "critical or high or medium or low",
-      "title": "catchy title like Your 60K Coffee Addiction",
-      "reasoning": "2 sentences on why to quit or reduce this habit",
+      "severity": "string",
+      "title": "string",
+      "reasoning": "string",
       "yearlySavings": 0,
-      "alternativeSuggestion": "brief practical alternative"
+      "alternativeSuggestion": "string"
     }
   ],
   "overallScore": 0,
-  "positiveHabits": ["list of habit names that are fine or healthy"],
-  "motivation": "one punchy closing statement to motivate change"
+  "positiveHabits": ["string"],
+  "motivation": "string"
 }
 
-Return top 3-4 habits to cut. Be specific about rupee amounts. Be real, not preachy. Return pure JSON only, no backticks.`;
+Return top 3-4 habits. Pure JSON only.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    // Fail-safe: Use the full resource name
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-    const clean = text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    
+    const response = await result.response;
+    const text = response.text();
+
+    if (!text) {
+      throw new Error("Empty response from AI");
+    }
+
+    const clean = text
+      .replace(/^```json\s*/, "")
+      .replace(/^```\s*/, "")
+      .replace(/\s*```$/, "")
+      .trim();
+
     const insights: AIInsightsResponse = JSON.parse(clean);
 
     return NextResponse.json(insights);
   } catch (error) {
-    console.error("AI insights error:", error);
+    console.error("AI insights error details:", error);
     return NextResponse.json(
-      { error: "Failed to generate insights. Check your Gemini API key." },
+      { error: "AI Insight generation failed. Check server logs." },
       { status: 500 }
     );
   }
