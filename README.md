@@ -2,7 +2,7 @@
 
 A sleek dark-mode finance app that reveals the **real money cost** of your daily habits. Track, analyze, and get AI-powered insights on where your money is actually going.
 
-🔗 **Live Demo → [realcost-sigma.vercel.app](https://realcost-sigma.vercel.app)**
+🔗 **Live Demo → [realcost-sigma.vercel.app](https://real-cost-gules.vercel.app/)**
 
 ## ✨ Features
 
