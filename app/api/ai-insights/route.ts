@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Habit, AIInsightsResponse } from "@/types";
-import { calculateHabitStats, calculateTotals, minutesToHours } from "@/lib/calculations";
+import {
+  calculateHabitStats,
+  calculateTotals,
+  minutesToHours,
+} from "@/lib/calculations";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -26,48 +30,66 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const prompt = `You are a sharp financial advisor analyzing someone's daily habits. Be direct, insightful, and a little provocative.
-
-Here are their habits with yearly costs (in ₹):
+    const prompt = `You are a sharp financial advisor. Analyze these habits:
 ${JSON.stringify(habitDetails, null, 2)}
 
 Total yearly cost: ₹${Math.round(totals.yearlyCost).toLocaleString("en-IN")}
 Total yearly hours: ${Math.round(minutesToHours(totals.yearlyTime))}h
 
-Respond ONLY with a JSON object (no markdown, no code fences) matching this exact structure:
+Respond ONLY with a JSON object matching this structure:
 {
-  "summary": "2-3 sentence punchy summary of their spending habits",
+  "summary": "string",
   "topHabitsToQuit": [
     {
-      "habitId": "matching habit name",
+      "habitId": "string",
       "habitName": "string",
-      "severity": "critical or high or medium or low",
-      "title": "catchy title like Your 60K Coffee Addiction",
-      "reasoning": "2 sentences on why to quit or reduce this habit",
+      "severity": "critical" | "high" | "medium" | "low",
+      "title": "string",
+      "reasoning": "string",
       "yearlySavings": 0,
-      "alternativeSuggestion": "brief practical alternative"
+      "alternativeSuggestion": "string"
     }
   ],
   "overallScore": 0,
-  "positiveHabits": ["list of habit names that are fine or healthy"],
-  "motivation": "one punchy closing statement to motivate change"
+  "positiveHabits": ["string"],
+  "motivation": "string"
 }
 
-Return top 3-4 habits to cut. Be specific about rupee amounts. Be real, not preachy. Return pure JSON only, no backticks.`;
+The "severity" field MUST be exactly one of: "critical", "high", "medium", or "low".
+Return top 3-4 habits. Pure JSON only.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    // PRIMARY MODEL: Gemini 3.1 Flash (The 2026 speed king)
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3.1-flash-lite-preview",
+      generationConfig: { responseMimeType: "application/json" }
+    });
 
-    const clean = text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (apiError: any) {
+      // FALLBACK: Use Gemini 2.5 Flash if the 3.1 preview is overloaded (503)
+      if (apiError.status === 503) {
+        const stableModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        result = await stableModel.generateContent(prompt);
+      } else {
+        throw apiError;
+      }
+    }
+    
+    const response = await result.response;
+    const text = response.text();
+
+    const clean = text.replace(/```json|```/g, "").trim();
     const insights: AIInsightsResponse = JSON.parse(clean);
 
     return NextResponse.json(insights);
-  } catch (error) {
-    console.error("AI insights error:", error);
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    const isOverloaded = error.status === 503;
     return NextResponse.json(
-      { error: "Failed to generate insights. Check your Gemini API key." },
-      { status: 500 }
+      { error: isOverloaded ? "AI is busy. Retry in 10s." : "Analysis failed." },
+      { status: isOverloaded ? 503 : 500 }
     );
   }
 }
