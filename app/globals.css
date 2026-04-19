@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --background: 222 20% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222 20% 9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 20% 9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 142 71% 45%;
+  --primary-foreground: 144 61% 10%;
+  --secondary: 222 20% 14%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 222 20% 14%;
+  --muted-foreground: 215 20% 55%;
+  --accent: 222 20% 14%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 55%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 222 20% 16%;
+  --input: 222 20% 12%;
+  --ring: 142 71% 45%;
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-geist-sans), 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* Font variables */
+.font-display { font-family: 'Syne', sans-serif; }
+.font-mono-dm { font-family: 'DM Mono', monospace; }
+
+/* Stat number animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-animate {
+  animation: countUp 0.6s ease-out forwards;
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.15), 0 0 60px rgba(16, 185, 129, 0.05);
+}
+
+.glow-red {
+  box-shadow: 0 0 30px rgba(244, 63, 94, 0.15), 0 0 60px rgba(244, 63, 94, 0.05);
+}
+
+.glow-amber {
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.15), 0 0 60px rgba(245, 158, 11, 0.05);
+}
+
+/* Card hover */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Grid background */
+.bg-grid {
+  background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 50%, #6ee7b7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-red {
+  background: linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #fda4af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer loading */
+.shimmer {
+  background: linear-gradient(90deg, hsl(var(--card)) 25%, hsl(var(--secondary)) 50%, hsl(var(--card)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Tab underline animation */
+.tab-active {
+  position: relative;
+}
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #10b981;
+  border-radius: 2px;
+}
+
+/* Recharts custom */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+.recharts-default-tooltip {
+  background: hsl(222, 20%, 11%) !important;
+  border: 1px solid hsl(222, 20%, 18%) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  padding: 10px 14px !important;
+}
+
+.recharts-tooltip-label {
+  color: hsl(210, 40%, 98%) !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+}
+
+.recharts-tooltip-item {
+  color: hsl(215, 20%, 70%) !important;
+}
