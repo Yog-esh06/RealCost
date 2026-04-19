@@ -14,10 +14,7 @@ export async function POST(req: NextRequest) {
     const { habits }: { habits: Habit[] } = await req.json();
 
     if (!habits || habits.length === 0) {
-      return NextResponse.json(
-        { error: "No habits provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No habits provided" }, { status: 400 });
     }
 
     const totals = calculateTotals(habits);
@@ -46,7 +43,7 @@ Respond ONLY with a JSON object matching this structure:
     {
       "habitId": "string",
       "habitName": "string",
-      "severity": "string",
+      "severity": "critical" | "high" | "medium" | "low",
       "title": "string",
       "reasoning": "string",
       "yearlySavings": 0,
@@ -58,36 +55,41 @@ Respond ONLY with a JSON object matching this structure:
   "motivation": "string"
 }
 
+The "severity" field MUST be exactly one of: "critical", "high", "medium", or "low".
 Return top 3-4 habits. Pure JSON only.`;
 
-    // Fail-safe: Use the full resource name
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    // PRIMARY MODEL: Gemini 3.1 Flash (The 2026 speed king)
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3.1-flash-lite-preview",
+      generationConfig: { responseMimeType: "application/json" }
     });
+
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (apiError: any) {
+      // FALLBACK: Use Gemini 2.5 Flash if the 3.1 preview is overloaded (503)
+      if (apiError.status === 503) {
+        const stableModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        result = await stableModel.generateContent(prompt);
+      } else {
+        throw apiError;
+      }
+    }
     
     const response = await result.response;
     const text = response.text();
 
-    if (!text) {
-      throw new Error("Empty response from AI");
-    }
-
-    const clean = text
-      .replace(/^```json\s*/, "")
-      .replace(/^```\s*/, "")
-      .replace(/\s*```$/, "")
-      .trim();
-
+    const clean = text.replace(/```json|```/g, "").trim();
     const insights: AIInsightsResponse = JSON.parse(clean);
 
     return NextResponse.json(insights);
-  } catch (error) {
-    console.error("AI insights error details:", error);
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    const isOverloaded = error.status === 503;
     return NextResponse.json(
-      { error: "AI Insight generation failed. Check server logs." },
-      { status: 500 }
+      { error: isOverloaded ? "AI is busy. Retry in 10s." : "Analysis failed." },
+      { status: isOverloaded ? 503 : 500 }
     );
   }
 }
